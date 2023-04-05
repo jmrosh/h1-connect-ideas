@@ -1,14 +1,16 @@
+import asyncio
+import json
 import os
 import openai
 from github import Github, PullRequest, Commit, File
 from dotenv import load_dotenv
 import requests
 
-
 load_dotenv()
 # Set up your API keys
 GITHUB_ACCESS_TOKEN = os.environ["GITHUB_ACCESS_TOKEN"]
 OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
+CONFLUENCE_ACCESS_TOKEN = os.environ["CONFLUENCE_ACCESS_TOKEN"]
 
 # Initialize the GitHub and OpenAI API clients
 github = Github(GITHUB_ACCESS_TOKEN)
@@ -30,19 +32,32 @@ def generate_summary(text):
     # print(f'text: {text}')
 
     response = openai.ChatCompletion.create(
-        model="gpt-4",
+        model="gpt-3.5-turbo",
         messages=[
             {"role": "system",
              "content": "I am helping your team summarize cobol code in 1-4 sentences. What file can I help you with?"},
             {"role": "user", "content": f'Here is my cobol file: \n{text}'}
         ],
-        max_tokens=5000,
+        max_tokens=1100,
         n=1,
         stop=None,
         temperature=0.5,
     )
 
     return response.choices[0].message.content.strip()
+
+
+async def post_to_confluence(summary):
+    response = requests.post(
+        url="https://slalom.atlassian.net//wiki/api/v2/pages",
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Basic {CONFLUENCE_ACCESS_TOKEN}"
+        },
+        data=summary
+    )
+    print(response.content)
+    return response.status_code
 
 
 def main():
@@ -58,10 +73,16 @@ def main():
     # print(f'raw_url_contents: {f.text}')
     #
     summary = generate_summary(f.text)
-    summary = summary.split(". ")
+    summary_split = summary.split(". ")
     print(f"\nGenerated Summary:\n\t")
-    for sentence in summary:
+    for sentence in summary_split:
         print(f'- {sentence}')
+
+    print(summary)
+
+    my_dict = { "spaceId": 3189311943, "status": "current", "title": "WI PYTHON", "parentId": 3195142195, "body": {"representation": "wiki", "value": summary}}
+    data = json.dumps(my_dict)
+    asyncio.run(post_to_confluence(data))
 
 
 if __name__ == "__main__":
