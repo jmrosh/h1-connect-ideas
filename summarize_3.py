@@ -30,13 +30,14 @@ def generate_summary(text):
     # print(f'text: {text}')
 
     response = openai.ChatCompletion.create(
-        model="gpt-4",
+        model="gpt-3.5-turbo",
         messages=[
             {"role": "system",
              "content": "I am helping your team summarize cobol code in 1-4 sentences. What file can I help you with?"},
-            {"role": "user", "content": f'Here is my cobol file: \n{text}'}
+            {"role": "user",
+             "content": f'Here is my cobol file: \n{text}'}
         ],
-        max_tokens=5000,
+        max_tokens=1200,
         n=1,
         stop=None,
         temperature=0.5,
